@@ -18,14 +18,14 @@ Browse live movies, shows, and concerts, inspect showtimes, select multi-seat ba
 ### 2. Interactive Real-Time Seat Matrix (Customer UI)
 Select VIP, Premium, or Standard seats with instant optimistic locking and live WebSocket occupancy updates across connected clients.
 
-![Customer Seat Selection Matrix](docs/screenshots/customer_seat_selection_ui.png)
+![Customer Seat Selection Matrix](docs/screenshots/screen.png)
 
 ---
 
 ### 3. Organiser Financial Dashboard & Customer Ticket Audit
 Monitor real-time gross INR revenue, view per-tier sales distributions, and audit individual customer bookings with assigned seat numbers and payment statuses.
 
-![Organiser Analytics Dashboard](docs/screenshots/organiser_dashboard_ui.png)
+![Organiser Analytics Dashboard](docs/screenshots/organiser.png)
 
 ---
 
