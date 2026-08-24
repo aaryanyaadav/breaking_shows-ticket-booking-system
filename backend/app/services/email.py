@@ -28,8 +28,8 @@ async def send_email_notification(
 
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER", "projects.aky@gmail.com").strip()
-    smtp_pass = os.getenv("SMTP_PASS", "ynsy xxbp iacu ofuo").strip()
+    smtp_user = os.getenv("SMTP_USER", "").strip()
+    smtp_pass = os.getenv("SMTP_PASS", "").strip()
     smtp_from = os.getenv("SMTP_FROM", smtp_user).strip() or smtp_user
 
     if not smtp_user or not smtp_pass:
