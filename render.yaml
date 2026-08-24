@@ -34,9 +34,8 @@ services:
         sync: false
 
   # 2. React Frontend Static Site (Free Global CDN)
-  - type: web
+  - type: static
     name: ticket-frontend
-    env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     routes:
