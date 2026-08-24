@@ -8,24 +8,65 @@ Designed to handle flash-sale ticket traffic with **zero double-bookings**, **at
 
 ## 📸 Screenshots & Visual Tour
 
-### 1. Interactive Real-Time Seat Matrix & Category Tiers
-Select VIP, Premium, or Standard seats with instant optimistic locking and live WebSocket occupancy updates across connected clients.
+### 1. Customer Portal: Event Discovery & Booking Flow
+Browse live movies, shows, and concerts, inspect showtimes, select multi-seat batches, and generate secure scannable digital QR passes.
 
-![Interactive Seat Selection](docs/screenshots/seat_selection_ui.png)
+![Customer UI & Event Discovery](docs/screenshots/customer_portal_ui.png)
 
 ---
 
-### 2. Organiser Financial Dashboard & Customer Ticket Audit
-Monitor real-time gross revenue, view per-tier sales distributions, and audit individual customer bookings with assigned seat numbers and payment statuses.
+### 2. Interactive Real-Time Seat Matrix (Customer UI)
+Select VIP, Premium, or Standard seats with instant optimistic locking and live WebSocket occupancy updates across connected clients.
+
+![Customer Seat Selection Matrix](docs/screenshots/customer_seat_selection_ui.png)
+
+---
+
+### 3. Organiser Financial Dashboard & Customer Ticket Audit
+Monitor real-time gross INR revenue, view per-tier sales distributions, and audit individual customer bookings with assigned seat numbers and payment statuses.
 
 ![Organiser Analytics Dashboard](docs/screenshots/organiser_dashboard_ui.png)
 
 ---
 
-### 3. Event Discovery & Checkout Flow
-Browse live movies and concerts, view active venue schedules, reserve multi-seat batches, and generate secure scannable digital QR passes.
+## 🏗️ High-Level System Architecture
 
-![Event Booking and Checkout](docs/screenshots/booking_and_events_ui.png)
+```mermaid
+graph TD
+    subgraph Clients["Client Layer (React + Vite SPA)"]
+        C1["Customer Web App\n(Event Browsing, Seat Selection & QR Passes)"]
+        C2["Organiser Portal\n(Event Creation & Revenue Audit)"]
+        C3["Master Admin Console\n(Auditorium Screen & Layout Builder)"]
+    end
+
+    subgraph AppServer["Application Layer (FastAPI Asynchronous Engine)"]
+        API["FastAPI REST Endpoints\n(JWT Auth, Holds, Bookings, Waitlists)"]
+        WS["WebSocket Manager\n(Real-Time Seat Map Broadcast)"]
+        Worker["Background Scheduler & TTL Cleaner\n(Async Expiration & Waitlist Cascade)"]
+        EmailEngine["Transactional Email Engine\n(MailerSend / Resend / Brevo API over Port 443)"]
+    end
+
+    subgraph InMem["In-Memory & Distributed Locking Layer"]
+        Redis[("Redis Database\nAtomic Lua Scripting\n10-Min Transient Hold TTLs")]
+    end
+
+    subgraph DurableDB["Durable Persistence Layer"]
+        Postgres[("PostgreSQL Database\nACID Ledger & Foreign Keys\nOptimistic Version Counters")]
+    end
+
+    C1 -->|REST API Requests (JWT)| API
+    C2 -->|Manage Events & Financial Audit| API
+    C3 -->|Build Screen Venues & Layouts| API
+    
+    API <-->|Atomic Multi-Seat Lua Locks| Redis
+    API <-->|Async ORM Queries & ACID Ledger| Postgres
+    API -->|Emit Seat State Transitions| WS
+    WS -->|Real-Time Status Feeds| C1
+    
+    Worker <-->|Scan Expired Holds (600s) & Offers (900s)| Postgres
+    Worker -->|Trigger Automated Waitlist Offers| EmailEngine
+    EmailEngine -->|HTML Passes & Scannable QR Codes| C1
+```
 
 ---
 
