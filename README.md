@@ -1,4 +1,4 @@
-# 🎟️ Ticketsmith - Ticket Booking Platform
+# Ticketsmith - Ticket Booking Platform
 
 An enterprise-grade, high-concurrency event ticketing and seat allocation platform built with **FastAPI**, **PostgreSQL**, **Redis**, **WebSockets**, **Docker**, and **React**.
 
@@ -6,7 +6,7 @@ Designed to handle flash-sale ticket traffic with **zero double-bookings**, **at
 
 ---
 
-## 📸 Screenshots & Visual Tour
+## Screenshots & Visual Tour
 
 ### 1. Customer Portal: Event Discovery & Booking Flow
 Browse live movies, shows, and concerts, inspect showtimes, select multi-seat batches, and generate secure scannable digital QR passes.
@@ -29,7 +29,7 @@ Monitor real-time gross INR revenue, view per-tier sales distributions, and audi
 
 ---
 
-## 🏗️ High-Level System Architecture
+## High-Level System Architecture
 
 ```mermaid
 flowchart TD
@@ -70,7 +70,7 @@ flowchart TD
 
 ---
 
-## 🚀 Key Features & Capabilities
+## Key Features & Capabilities
 
 - **Strict Role-Based Access Control (RBAC)**:
   - **Master Admin**: Manage physical auditorium venues, build custom seat grid layouts (Rows, Seats per Row, VIP/Premium/Standard tiers), audit platform health, and oversee all organiser listings.
@@ -85,7 +85,7 @@ flowchart TD
 
 ---
 
-## 🗄️ Database Schema and Entity Relationships
+## Database Schema and Entity Relationships
 
 The platform uses a relational PostgreSQL database schema with strict foreign key constraints, cascading rules, and optimistic locking version counters.
 
@@ -140,7 +140,7 @@ erDiagram
 
 ---
 
-## 🔒 Seat Hold and Concurrency Control Logic
+## Seat Hold and Concurrency Control Logic
 
 In flash-sale event ticketing, thousands of concurrent requests can target the exact same seat within milliseconds. Ticketsmith solves this using a **two-tier locking strategy**: **In-Memory Redis Lua Atomic Locks** + **Database Optimistic Concurrency Control**.
 
@@ -214,7 +214,7 @@ A background async task runs periodically every 15 seconds:
 
 ---
 
-## ⏳ Category-Aware Waitlist Queue & Auto-Assignment Logic
+## Category-Aware Waitlist Queue & Auto-Assignment Logic
 
 When an event or specific seat tier (`VIP`, `PREMIUM`, `STANDARD`) sells out (`AVAILABLE == 0`), customers can join a category-specific FIFO waitlist queue.
 
@@ -258,9 +258,9 @@ flowchart TD
 
 ---
 
-## 📡 REST API Documentation
+## REST API Documentation
 
-### 🔐 Authentication (`/api/v1/auth`)
+### Authentication (`/api/v1/auth`)
 
 | Method | Endpoint | Access | Description | Request Body / Parameters | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -270,7 +270,7 @@ flowchart TD
 
 ---
 
-### 🎭 Events & Organiser Management (`/api/v1/events`)
+### Events & Organiser Management (`/api/v1/events`)
 
 | Method | Endpoint | Access | Description | Request Body / Parameters | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -282,7 +282,7 @@ flowchart TD
 
 ---
 
-### 🏛️ Venues & Screen Auditoriums (`/api/v1/venues`)
+### Venues & Screen Auditoriums (`/api/v1/venues`)
 
 | Method | Endpoint | Access | Description | Request Body / Parameters | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -291,7 +291,7 @@ flowchart TD
 
 ---
 
-### 🎬 Shows & Inventory (`/api/v1/shows`)
+### Shows & Inventory (`/api/v1/shows`)
 
 | Method | Endpoint | Access | Description | Request Body / Parameters | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -300,7 +300,7 @@ flowchart TD
 
 ---
 
-### 🔒 Seat Holds (`/api/v1/holds`)
+### Seat Holds (`/api/v1/holds`)
 
 | Method | Endpoint | Access | Description | Request Body / Parameters | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -309,7 +309,7 @@ flowchart TD
 
 ---
 
-### 💳 Bookings & Checkout (`/api/v1/bookings`)
+### Bookings & Checkout (`/api/v1/bookings`)
 
 | Method | Endpoint | Access | Description | Request Body / Parameters | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -320,7 +320,7 @@ flowchart TD
 
 ---
 
-### ⏳ Waitlists & Offers (`/api/v1/waitlist`)
+### Waitlists & Offers (`/api/v1/waitlist`)
 
 | Method | Endpoint | Access | Description | Request Body / Parameters | Response |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -330,7 +330,7 @@ flowchart TD
 
 ---
 
-### 🔌 WebSocket Real-Time Channel
+### WebSocket Real-Time Channel
 
 - **Endpoint**: `WS /ws/shows/{show_id}`
 - **Protocol**: JSON message broadcast
@@ -347,7 +347,7 @@ flowchart TD
 
 ---
 
-## ⚙️ Environment Configuration (`.env.example`)
+## Environment Configuration (`.env.example`)
 
 ```env
 # Database Configuration (PostgreSQL)
@@ -388,7 +388,7 @@ SMTP_FROM=
 
 ---
 
-## 📄 License & Standards
+## License & Standards
 
 Built with enterprise concurrency and fault-tolerance patterns by **Ticketsmith Engineering**. 
 
