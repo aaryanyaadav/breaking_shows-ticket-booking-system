@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Film, Music, Trophy, Sparkles, MapPin, Clock } from 'lucide-react';
+import { API_BASE } from '../config';
 
 export default function Home({ onSelectEvent }) {
   const [events, setEvents] = useState([]);
@@ -14,13 +15,13 @@ export default function Home({ onSelectEvent }) {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      let url = '/api/v1/events';
+      let url = `${API_BASE}/api/v1/events`;
       if (selectedType !== 'ALL') {
         url += `?event_type=${selectedType}`;
       }
       const res = await fetch(url);
       const data = await res.json();
-      setEvents(data);
+      setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch events:", err);
     } finally {

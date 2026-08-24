@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bookmark, Clock, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { API_BASE } from '../config';
 
 export default function Waitlists({ currentUser }) {
   const [entries, setEntries] = useState([]);
@@ -16,16 +17,18 @@ export default function Waitlists({ currentUser }) {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      const eRes = await fetch('/api/v1/waitlist/my-entries', { headers });
+      const eRes = await fetch(`${API_BASE}/api/v1/waitlist/my-entries`, { headers });
       const eData = await eRes.json();
-      setEntries(eData);
+      setEntries(Array.isArray(eData) ? eData : []);
 
-      const oRes = await fetch('/api/v1/waitlist/my-offers', { headers });
+      const oRes = await fetch(`${API_BASE}/api/v1/waitlist/my-offers`, { headers });
       const oData = await oRes.json();
-      setOffers(oData);
+      setOffers(Array.isArray(oData) ? oData : []);
 
     } catch (e) {
       console.error(e);
+      setEntries([]);
+      setOffers([]);
     } finally {
       setLoading(false);
     }
@@ -33,7 +36,7 @@ export default function Waitlists({ currentUser }) {
 
   const handleAcceptOffer = async (offerId) => {
     try {
-      const res = await fetch(`/api/v1/waitlist/offers/${offerId}/accept`, {
+      const res = await fetch(`${API_BASE}/api/v1/waitlist/offers/${offerId}/accept`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, Ticket, Calendar, Building2, Plus, Sparkles, TrendingUp, Users, Film, ChevronDown, ChevronUp, ShieldCheck, Eye, LayoutGrid, CheckCircle2, Trash2, Mail, UserCheck } from 'lucide-react';
+import { API_BASE } from '../config';
 
 export default function Dashboard({ currentUser }) {
   const [analytics, setAnalytics] = useState(null);
@@ -53,21 +54,21 @@ export default function Dashboard({ currentUser }) {
       const headers = { 'Authorization': `Bearer ${token}` };
 
       // Fetch Global analytics
-      const aRes = await fetch('/api/v1/admin/analytics', { headers });
+      const aRes = await fetch(`${API_BASE}/api/v1/admin/analytics`, { headers });
       if (aRes.ok) {
         const aData = await aRes.json();
         setAnalytics(aData);
       }
 
       // Fetch venues
-      const vRes = await fetch('/api/v1/venues', { headers });
+      const vRes = await fetch(`${API_BASE}/api/v1/venues`, { headers });
       if (vRes.ok) {
         const vData = await vRes.json();
         if (Array.isArray(vData)) setVenues(vData);
       }
 
       // Fetch events
-      const eRes = await fetch('/api/v1/events', { headers });
+      const eRes = await fetch(`${API_BASE}/api/v1/events`, { headers });
       if (eRes.ok) {
         const eData = await eRes.json();
         if (Array.isArray(eData)) {
@@ -79,7 +80,7 @@ export default function Dashboard({ currentUser }) {
       }
 
       // Fetch Organiser Analytics
-      const orgRes = await fetch('/api/v1/events/organiser-analytics', { headers });
+      const orgRes = await fetch(`${API_BASE}/api/v1/events/organiser-analytics`, { headers });
       if (orgRes.ok) {
         const orgData = await orgRes.json();
         setOrganiserData(orgData);
@@ -87,7 +88,7 @@ export default function Dashboard({ currentUser }) {
 
       // Fetch organisers with event listings for Admin
       if (isAdmin) {
-        const oRes = await fetch('/api/v1/admin/organisers', { headers });
+        const oRes = await fetch(`${API_BASE}/api/v1/admin/organisers`, { headers });
         if (oRes.ok) {
           const oData = await oRes.json();
           if (Array.isArray(oData)) setOrganisersList(oData);
@@ -108,7 +109,7 @@ export default function Dashboard({ currentUser }) {
     }
 
     try {
-      const res = await fetch('/api/v1/events', {
+      const res = await fetch(`${API_BASE}/api/v1/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +149,7 @@ export default function Dashboard({ currentUser }) {
     }
 
     try {
-      const res = await fetch(`/api/v1/events/${eventId}`, {
+      const res = await fetch(`${API_BASE}/api/v1/events/${eventId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -179,7 +180,7 @@ export default function Dashboard({ currentUser }) {
     const premRows = Math.min(parseInt(venuePremiumRows) || 0, rows - vipRows);
 
     try {
-      const res = await fetch('/api/v1/venues', {
+      const res = await fetch(`${API_BASE}/api/v1/venues`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -231,7 +232,7 @@ export default function Dashboard({ currentUser }) {
     });
 
     try {
-      const res = await fetch('/api/v1/shows', {
+      const res = await fetch(`${API_BASE}/api/v1/shows`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

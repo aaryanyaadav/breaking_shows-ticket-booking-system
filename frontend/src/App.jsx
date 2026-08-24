@@ -6,6 +6,7 @@ import MyBookings from './pages/MyBookings';
 import Waitlists from './pages/Waitlists';
 import Dashboard from './pages/Dashboard';
 import { X, UserCheck, ShieldAlert } from 'lucide-react';
+import { API_BASE } from './config';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -26,7 +27,7 @@ export default function App() {
 
   const fetchMe = async (token) => {
     try {
-      const res = await fetch('/api/v1/auth/me', {
+      const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -60,7 +61,7 @@ export default function App() {
     }
 
     try {
-      let res = await fetch('/api/v1/auth/login', {
+      let res = await fetch(`${API_BASE}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -68,7 +69,7 @@ export default function App() {
 
       if (!res.ok) {
         // Fallback: register demo user if not yet seeded in backend DB
-        res = await fetch('/api/v1/auth/register', {
+        res = await fetch(`${API_BASE}/api/v1/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, email, password, role })
@@ -100,7 +101,7 @@ export default function App() {
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    const endpoint = isLogin ? '/api/v1/auth/login' : '/api/v1/auth/register';
+    const endpoint = isLogin ? `${API_BASE}/api/v1/auth/login` : `${API_BASE}/api/v1/auth/register`;
     const body = isLogin 
       ? { email: authForm.email, password: authForm.password }
       : authForm;

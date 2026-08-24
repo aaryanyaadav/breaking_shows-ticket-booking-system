@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Ticket as TicketIcon, Calendar, XCircle, QrCode, RefreshCw } from 'lucide-react';
 import TicketModal from '../components/TicketModal';
+import { API_BASE } from '../config';
 
 export default function MyBookings({ currentUser }) {
   const [bookings, setBookings] = useState([]);
@@ -14,13 +15,14 @@ export default function MyBookings({ currentUser }) {
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/bookings', {
+      const res = await fetch(`${API_BASE}/api/v1/bookings`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
-      setBookings(data);
+      setBookings(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -28,11 +30,11 @@ export default function MyBookings({ currentUser }) {
 
   const handleFetchTicket = async (bookingId) => {
     try {
-      const res = await fetch('/api/v1/tickets', {
+      const res = await fetch(`${API_BASE}/api/v1/tickets`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const tickets = await res.json();
-      const tkt = tickets.find(t => t.booking_id === bookingId);
+      const tkt = Array.isArray(tickets) ? tickets.find(t => t.booking_id === bookingId) : null;
       if (tkt) {
         setSelectedTicket(tkt);
       } else {
@@ -47,7 +49,7 @@ export default function MyBookings({ currentUser }) {
     if (!confirm("Are you sure you want to cancel this booking? Held seats will be automatically offered to the waitlist queue!")) return;
 
     try {
-      const res = await fetch(`/api/v1/bookings/${bookingId}/cancel`, {
+      const res = await fetch(`${API_BASE}/api/v1/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });

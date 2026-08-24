@@ -3,6 +3,7 @@ import { ArrowLeft, Clock, MapPin, Sparkles, Shield, CheckCircle2, AlertCircle, 
 import WaitingRoomModal from '../components/WaitingRoomModal';
 import HoldTimer from '../components/HoldTimer';
 import TicketModal from '../components/TicketModal';
+import { API_BASE, WS_BASE } from '../config';
 
 export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) {
   const [shows, setShows] = useState([]);
@@ -35,8 +36,7 @@ export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) 
   useEffect(() => {
     if (selectedShow) {
       // Connect to WebSockets for live seat map updates
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws/shows/${selectedShow.id}`;
+      const wsUrl = `${WS_BASE}/ws/shows/${selectedShow.id}`;
       const ws = new WebSocket(wsUrl);
 
       ws.onmessage = (evt) => {
@@ -59,7 +59,7 @@ export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) 
 
   const fetchShows = async () => {
     try {
-      const res = await fetch(`/api/v1/shows?event_id=${event.id}`);
+      const res = await fetch(`${API_BASE}/api/v1/shows?event_id=${event.id}`);
       const data = await res.json();
       if (Array.isArray(data)) {
         setShows(data);
@@ -92,7 +92,7 @@ export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) 
 
     // Trigger Virtual Waiting Room queue join
     try {
-      const res = await fetch(`/api/v1/shows/${show.id}/queue/join`, {
+      const res = await fetch(`${API_BASE}/api/v1/shows/${show.id}/queue/join`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
       });
@@ -114,7 +114,7 @@ export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) 
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const res = await fetch(`/api/v1/shows/${showId}/seats`, { headers });
+      const res = await fetch(`${API_BASE}/api/v1/shows/${showId}/seats`, { headers });
       const data = await res.json();
       if (Array.isArray(data)) {
         setSeats(data);
@@ -152,7 +152,7 @@ export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) 
 
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/holds', {
+      const res = await fetch(`${API_BASE}/api/v1/holds`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,7 +193,7 @@ export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) 
 
     try {
       // 1. Create Pending Booking with Idempotency-Key
-      const bRes = await fetch('/api/v1/bookings', {
+      const bRes = await fetch(`${API_BASE}/api/v1/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +215,7 @@ export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) 
       }
 
       // 2. Execute Mock Payment Webhook
-      const pRes = await fetch('/api/v1/bookings/mock-pay', {
+      const pRes = await fetch(`${API_BASE}/api/v1/bookings/mock-pay`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -254,7 +254,7 @@ export default function ShowBooking({ event, currentUser, onBack, onOpenAuth }) 
       return;
     }
     try {
-      const res = await fetch('/api/v1/waitlist/join', {
+      const res = await fetch(`${API_BASE}/api/v1/waitlist/join`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
