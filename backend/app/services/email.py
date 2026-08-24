@@ -1,13 +1,65 @@
 import asyncio
 import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
+import urllib.request
+import json
 import base64
 import logging
 import os
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 
 logger = logging.getLogger("email_service")
+
+def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
+    try:
+        url = "https://api.resend.com/emails"
+        headers = {
+            "Authorization": f"Bearer {api_key.strip()}",
+            "Content-Type": "application/json"
+        }
+        # Resend testing sender requirement
+        sender = from_email if ("@" in from_email and "gmail.com" not in from_email) else "Ticketsmith <onboarding@resend.dev>"
+        payload = {
+            "from": sender,
+            "to": [to_email],
+            "subject": subject,
+            "html": body_html
+        }
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            if resp.status in (200, 201):
+                print(f"✅ Email delivered to {to_email} via Resend HTTP API (Port 443 HTTPS)!")
+                return True
+    except Exception as e:
+        print(f"Notice on Resend HTTP API dispatch: {e}")
+    return False
+
+def _send_via_brevo_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
+    try:
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "api-key": api_key.strip(),
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        sender_email = from_email if ("@" in from_email and "gmail.com" not in from_email) else "tickets@booking-platform.com"
+        payload = {
+            "sender": {"name": "Ticketsmith Platform", "email": sender_email},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "htmlContent": body_html
+        }
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            if resp.status in (200, 201):
+                print(f"✅ Email delivered to {to_email} via Brevo HTTP API (Port 443 HTTPS)!")
+                return True
+    except Exception as e:
+        print(f"Notice on Brevo HTTP API dispatch: {e}")
+    return False
 
 def _sync_send_email(
     to_email: str,
@@ -15,20 +67,35 @@ def _sync_send_email(
     body_html: str,
     qr_code_b64: str = None
 ) -> bool:
+    print("\n=======================================================")
+    print(f"📧 [EMAIL SERVICE] Recipient: {to_email}")
+    print(f"📌 Subject: {subject}")
+
+    resend_key = os.getenv("RESEND_API_KEY", "").strip()
+    brevo_key = os.getenv("BREVO_API_KEY", "").strip()
+
+    # 1. Try Resend HTTP API over HTTPS (Port 443 - Never blocked by Render firewall)
+    if resend_key:
+        print("🚀 Attempting dispatch via Resend HTTP API (HTTPS Port 443)...")
+        if _send_via_resend_http(resend_key, to_email, subject, body_html, os.getenv("SMTP_FROM", "")):
+            print("=======================================================\n")
+            return True
+
+    # 2. Try Brevo HTTP API over HTTPS (Port 443 - Never blocked by Render firewall)
+    if brevo_key:
+        print("🚀 Attempting dispatch via Brevo HTTP API (HTTPS Port 443)...")
+        if _send_via_brevo_http(brevo_key, to_email, subject, body_html, os.getenv("SMTP_FROM", "")):
+            print("=======================================================\n")
+            return True
+
+    # 3. Fallback to Direct SMTP (Port 587 TLS / Port 465 SSL)
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_user = os.getenv("SMTP_USER", "").strip()
     smtp_pass = os.getenv("SMTP_PASS", "").strip().replace(" ", "")
     smtp_from = os.getenv("SMTP_FROM", smtp_user).strip() or smtp_user
 
-    print("\n=======================================================")
-    print(f"📧 [EMAIL SERVICE] Recipient: {to_email}")
-    print(f"📧 [EMAIL SERVICE] Sender: {smtp_from} (User: {smtp_user})")
-    print(f"📌 Subject: {subject}")
-
     if not smtp_user or not smtp_pass:
-        print("⚠️ [EMAIL NOTICE] SMTP_USER or SMTP_PASS environment variable is missing on cloud server.")
-        print("Please configure SMTP_USER and SMTP_PASS in your Render Environment Variables tab.")
+        print("⚠️ [EMAIL NOTICE] SMTP credentials not configured. Set RESEND_API_KEY or SMTP_USER/SMTP_PASS in Render Environment Variables.")
         print("=======================================================\n")
         return False
 
@@ -47,7 +114,6 @@ def _sync_send_email(
 
         msg_alt.attach(MIMEText(html_content, "html"))
 
-        # Embed QR Code as MIME CID Inline Image Attachment
         if qr_code_b64:
             try:
                 raw_b64 = qr_code_b64.split(",")[-1] if "," in qr_code_b64 else qr_code_b64
@@ -59,25 +125,23 @@ def _sync_send_email(
             except Exception as qr_err:
                 logger.warning(f"CID QR image attachment notice: {qr_err}")
 
-        # Attempt 1: Port 587 (TLS)
+        # Attempt Port 587 (TLS)
         try:
-            with smtplib.SMTP(smtp_host, 587, timeout=15) as server:
+            with smtplib.SMTP(smtp_host, 587, timeout=12) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.sendmail(smtp_from, [to_email], msg.as_string())
-            print(f"✅ Real Email successfully delivered to ({to_email}) via Port 587 TLS!")
+            print(f"✅ Delivered to ({to_email}) via Port 587 TLS!")
             print("=======================================================\n")
-            logger.info(f"Real Email dispatched to {to_email} via Port 587 TLS")
             return True
         except Exception as err587:
             print(f"Notice: Port 587 TLS notice ({err587}). Attempting Port 465 SSL fallback...")
-            # Attempt 2: Port 465 (SSL Fallback)
-            with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+            # Attempt Port 465 (SSL Fallback)
+            with smtplib.SMTP_SSL(smtp_host, 465, timeout=12) as server:
                 server.login(smtp_user, smtp_pass)
                 server.sendmail(smtp_from, [to_email], msg.as_string())
-            print(f"✅ Real Email successfully delivered to ({to_email}) via Port 465 SSL!")
+            print(f"✅ Delivered to ({to_email}) via Port 465 SSL!")
             print("=======================================================\n")
-            logger.info(f"Real Email dispatched to {to_email} via Port 465 SSL")
             return True
 
     except Exception as e:
@@ -92,7 +156,4 @@ async def send_email_notification(
     body_html: str,
     qr_code_b64: str = None
 ) -> bool:
-    """
-    Non-blocking async wrapper around dual-port SMTP email dispatch.
-    """
     return await asyncio.to_thread(_sync_send_email, to_email, subject, body_html, qr_code_b64)
