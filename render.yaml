@@ -45,10 +45,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_BACKEND_URL
-        fromService:
-          type: web
-          name: ticket-backend
-          property: host
+        value: https://ticket-backend-hkry.onrender.com
 
   # 3. Redis Cache Service (Free Tier)
   - type: redis

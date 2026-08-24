@@ -125,6 +125,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
+      alert(`Authentication Error: ${err.message || "Failed to connect to backend server."}`);
     }
   };
 
