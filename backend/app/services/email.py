@@ -92,6 +92,34 @@ def _send_via_brevo_http(api_key: str, to_email: str, subject: str, body_html: s
         print(f"Notice on Brevo HTTP API dispatch: {e}")
     return False
 
+_cached_mailersend_domain = None
+
+def _get_mailersend_domain(api_key: str) -> str:
+    global _cached_mailersend_domain
+    if _cached_mailersend_domain:
+        return _cached_mailersend_domain
+    try:
+        url = "https://api.mailersend.com/v1/domains"
+        headers = {
+            "Authorization": f"Bearer {api_key.strip()}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": UA_HEADER
+        }
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode('utf-8'))
+                if "data" in data and len(data["data"]) > 0:
+                    domain_name = data["data"][0].get("name")
+                    if domain_name:
+                        _cached_mailersend_domain = domain_name
+                        print(f"🔍 Discovered verified MailerSend domain: {domain_name}")
+                        return domain_name
+    except Exception as e:
+        print(f"Notice fetching MailerSend domain: {e}")
+    return "trial-custom.mlsender.net"
+
 def _send_via_mailersend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
     try:
         url = "https://api.mailersend.com/v1/email"
@@ -101,7 +129,11 @@ def _send_via_mailersend_http(api_key: str, to_email: str, subject: str, body_ht
             "Accept": "application/json",
             "User-Agent": UA_HEADER
         }
-        sender_email = os.getenv("MAILERSEND_FROM", "").strip() or "info@trial-custom.mlsender.net"
+        sender_email = os.getenv("MAILERSEND_FROM", "").strip()
+        if not sender_email:
+            domain = _get_mailersend_domain(api_key)
+            sender_email = f"tickets@{domain}"
+
         payload = {
             "from": {"email": sender_email, "name": "Ticketsmith Platform"},
             "to": [{"email": to_email, "name": "Ticket Customer"}],
