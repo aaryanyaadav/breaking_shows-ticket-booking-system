@@ -18,8 +18,8 @@ def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: 
             "Authorization": f"Bearer {api_key.strip()}",
             "Content-Type": "application/json"
         }
-        # Resend testing sender requirement
-        sender = from_email if ("@" in from_email and "gmail.com" not in from_email) else "Ticketsmith <onboarding@resend.dev>"
+        # Resend testing sender requirement (must use onboarding@resend.dev)
+        sender = "Ticketsmith <onboarding@resend.dev>"
         payload = {
             "from": sender,
             "to": [to_email],
