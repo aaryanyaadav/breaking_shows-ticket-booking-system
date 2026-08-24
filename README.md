@@ -32,40 +32,40 @@ Monitor real-time gross INR revenue, view per-tier sales distributions, and audi
 ## 🏗️ High-Level System Architecture
 
 ```mermaid
-graph TD
-    subgraph Clients["Client Layer (React + Vite SPA)"]
-        C1["Customer Web App\n(Event Browsing, Seat Selection & QR Passes)"]
-        C2["Organiser Portal\n(Event Creation & Revenue Audit)"]
-        C3["Master Admin Console\n(Auditorium Screen & Layout Builder)"]
+flowchart TD
+    subgraph Clients["Client Layer"]
+        C1["Customer Web App"]
+        C2["Organiser Portal"]
+        C3["Master Admin Console"]
     end
 
-    subgraph AppServer["Application Layer (FastAPI Asynchronous Engine)"]
-        API["FastAPI REST Endpoints\n(JWT Auth, Holds, Bookings, Waitlists)"]
-        WS["WebSocket Manager\n(Real-Time Seat Map Broadcast)"]
-        Worker["Background Scheduler & TTL Cleaner\n(Async Expiration & Waitlist Cascade)"]
-        EmailEngine["Transactional Email Engine\n(MailerSend / Resend / Brevo API over Port 443)"]
+    subgraph AppServer["FastAPI Application Services"]
+        API["FastAPI REST Endpoints"]
+        WS["WebSocket Real-Time Manager"]
+        Worker["Background Scheduler & TTL Cleaner"]
+        EmailEngine["Transactional Cloud Email Engine"]
     end
 
-    subgraph InMem["In-Memory & Distributed Locking Layer"]
-        Redis[("Redis Database\nAtomic Lua Scripting\n10-Min Transient Hold TTLs")]
+    subgraph InMem["In-Memory & Distributed Locking"]
+        Redis[("Redis In-Memory Database\nAtomic Lua Locks")]
     end
 
     subgraph DurableDB["Durable Persistence Layer"]
-        Postgres[("PostgreSQL Database\nACID Ledger & Foreign Keys\nOptimistic Version Counters")]
+        Postgres[("PostgreSQL Database\nACID Ledger & Version Counters")]
     end
 
-    C1 -->|REST API Requests (JWT)| API
-    C2 -->|Manage Events & Financial Audit| API
-    C3 -->|Build Screen Venues & Layouts| API
-    
-    API <-->|Atomic Multi-Seat Lua Locks| Redis
-    API <-->|Async ORM Queries & ACID Ledger| Postgres
-    API -->|Emit Seat State Transitions| WS
-    WS -->|Real-Time Status Feeds| C1
-    
-    Worker <-->|Scan Expired Holds (600s) & Offers (900s)| Postgres
-    Worker -->|Trigger Automated Waitlist Offers| EmailEngine
-    EmailEngine -->|HTML Passes & Scannable QR Codes| C1
+    C1 -->|JWT REST Calls| API
+    C2 -->|Event & Sales Management| API
+    C3 -->|Venue Layout Configuration| API
+
+    API <-->|Atomic Lua Locks| Redis
+    API <-->|Async ORM & SQL Ledger| Postgres
+    API -->|Broadcast Seat Updates| WS
+    WS -->|Live Seat Matrix Feeds| C1
+
+    Worker <-->|Check Expired Holds & Offers| Postgres
+    Worker -->|Trigger Auto-Assignment| EmailEngine
+    EmailEngine -->|HTML Passes & QR Tickets| C1
 ```
 
 ---
