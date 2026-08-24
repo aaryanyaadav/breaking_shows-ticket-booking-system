@@ -88,6 +88,37 @@ def _send_via_brevo_http(api_key: str, to_email: str, subject: str, body_html: s
         print(f"Notice on Brevo HTTP API dispatch: {e}")
     return False
 
+def _send_via_mailersend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
+    try:
+        url = "https://api.mailersend.com/v1/email"
+        headers = {
+            "Authorization": f"Bearer {api_key.strip()}",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+        sender_email = from_email if ("@" in from_email and "gmail.com" not in from_email) else "info@trial-custom.mlsender.net"
+        payload = {
+            "from": {"email": sender_email, "name": "Ticketsmith Platform"},
+            "to": [{"email": to_email, "name": "Ticket Customer"}],
+            "subject": subject,
+            "html": body_html
+        }
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            if resp.status in (200, 201, 202):
+                print(f"✅ Email delivered to {to_email} via MailerSend HTTP API (Port 443 HTTPS)!")
+                return True
+    except urllib.error.HTTPError as http_err:
+        try:
+            err_body = http_err.read().decode('utf-8')
+            print(f"Notice on MailerSend HTTP API ({http_err.code}): {err_body}")
+        except Exception:
+            print(f"Notice on MailerSend HTTP API: {http_err}")
+    except Exception as e:
+        print(f"Notice on MailerSend HTTP API dispatch: {e}")
+    return False
+
 def _sync_send_email(
     to_email: str,
     subject: str,
@@ -100,19 +131,28 @@ def _sync_send_email(
 
     resend_key = os.getenv("RESEND_API_KEY", "").strip()
     brevo_key = os.getenv("BREVO_API_KEY", "").strip()
+    mailersend_key = os.getenv("MAILERSEND_API_KEY", "").strip()
 
-    # 1. Try Resend HTTP API over HTTPS (Port 443 - Never blocked by Render firewall)
+    # 1. Try MailerSend / MailerLite HTTP API over HTTPS (Port 443)
+    if mailersend_key:
+        print("🚀 Attempting dispatch via MailerSend HTTP API (HTTPS Port 443)...")
+        if _send_via_mailersend_http(mailersend_key, to_email, subject, body_html, os.getenv("SMTP_FROM", "")):
+            print("=======================================================\n")
+            return True
+
+    # 2. Try Resend HTTP API over HTTPS (Port 443)
     if resend_key:
         print("🚀 Attempting dispatch via Resend HTTP API (HTTPS Port 443)...")
         if _send_via_resend_http(resend_key, to_email, subject, body_html, os.getenv("SMTP_FROM", "")):
             print("=======================================================\n")
             return True
 
-    # 2. Try Brevo HTTP API over HTTPS (Port 443 - Never blocked by Render firewall)
+    # 3. Try Brevo HTTP API over HTTPS (Port 443)
     if brevo_key:
         print("🚀 Attempting dispatch via Brevo HTTP API (HTTPS Port 443)...")
         if _send_via_brevo_http(brevo_key, to_email, subject, body_html, os.getenv("SMTP_FROM", "")):
             print("=======================================================\n")
+            return True
             return True
 
     # 3. Fallback to Direct SMTP (Port 587 TLS / Port 465 SSL)
