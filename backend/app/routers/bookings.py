@@ -231,12 +231,15 @@ async def mock_pay_booking(
     </ul>
     <p>Scan the attached QR code ticket at the venue for entrance.</p>
     """
-    await send_email_notification(
-        to_email=current_user.email,
-        subject=f"🎟️ Ticket Confirmed: {booking.booking_reference}",
-        body_html=email_html,
-        qr_code_b64=qr_code_b64
-    )
+    try:
+        await send_email_notification(
+            to_email=current_user.email,
+            subject=f"🎟️ Ticket Confirmed: {booking.booking_reference}",
+            body_html=email_html,
+            qr_code_b64=qr_code_b64
+        )
+    except Exception as email_err:
+        print(f"⚠️ Non-blocking email dispatch notice: {email_err}")
 
     # 5. Broadcast WebSocket seat map update
     await ws_manager.broadcast_seat_update(
