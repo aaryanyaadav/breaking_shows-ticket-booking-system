@@ -18,8 +18,8 @@ def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: 
             "Authorization": f"Bearer {api_key.strip()}",
             "Content-Type": "application/json"
         }
-        # Resend testing sender requirement (must use onboarding@resend.dev)
-        sender = "Ticketsmith <onboarding@resend.dev>"
+        # Resend testing sender requirement
+        sender = "onboarding@resend.dev"
         payload = {
             "from": sender,
             "to": [to_email],
@@ -32,6 +32,12 @@ def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: 
             if resp.status in (200, 201):
                 print(f"✅ Email delivered to {to_email} via Resend HTTP API (Port 443 HTTPS)!")
                 return True
+    except urllib.error.HTTPError as http_err:
+        try:
+            err_body = http_err.read().decode('utf-8')
+            print(f"Notice on Resend HTTP API ({http_err.code}): {err_body}")
+        except Exception:
+            print(f"Notice on Resend HTTP API: {http_err}")
     except Exception as e:
         print(f"Notice on Resend HTTP API dispatch: {e}")
     return False
@@ -57,6 +63,12 @@ def _send_via_brevo_http(api_key: str, to_email: str, subject: str, body_html: s
             if resp.status in (200, 201):
                 print(f"✅ Email delivered to {to_email} via Brevo HTTP API (Port 443 HTTPS)!")
                 return True
+    except urllib.error.HTTPError as http_err:
+        try:
+            err_body = http_err.read().decode('utf-8')
+            print(f"Notice on Brevo HTTP API ({http_err.code}): {err_body}")
+        except Exception:
+            print(f"Notice on Brevo HTTP API: {http_err}")
     except Exception as e:
         print(f"Notice on Brevo HTTP API dispatch: {e}")
     return False
