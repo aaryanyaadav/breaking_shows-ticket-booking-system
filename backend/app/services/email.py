@@ -13,27 +13,40 @@ logger = logging.getLogger("email_service")
 
 UA_HEADER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
-def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
+def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str, qr_code_b64: str = None) -> bool:
     url = "https://api.resend.com/emails"
     headers = {
         "Authorization": f"Bearer {api_key.strip()}",
         "Content-Type": "application/json",
         "User-Agent": UA_HEADER
     }
-    # Resend testing sender requirement
     sender = "onboarding@resend.dev"
+    full_html = body_html
+    if qr_code_b64 and "cid:qrcode_image" not in body_html:
+        full_html += '<br/><div style="margin:20px 0;padding:20px;background:#0f172a;border-radius:12px;border:1px solid #6366f1;text-align:center;"><h3 style="color:#ffffff;margin-top:0;">🎟️ Your Official Venue Entry QR Pass</h3><img src="cid:qrcode_image" alt="QR Ticket Pass" style="max-width:240px;border-radius:8px;border:2px solid #6366f1;display:block;margin:12px auto;"/><p style="color:#94a3b8;font-size:12px;margin-bottom:0;">Please present this digital pass at the entrance gate.</p></div>'
+
     payload = {
         "from": sender,
         "to": [to_email],
         "subject": subject,
-        "html": body_html
+        "html": full_html
     }
+
+    if qr_code_b64:
+        raw_b64 = qr_code_b64.split(",")[-1] if "," in qr_code_b64 else qr_code_b64
+        payload["attachments"] = [
+            {
+                "filename": "ticket_qr.png",
+                "content": raw_b64
+            }
+        ]
+
     try:
         data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=12) as resp:
             if resp.status in (200, 201):
-                print(f"✅ Email delivered to {to_email} via Resend HTTP API (Port 443 HTTPS)!")
+                print(f"✅ Email & QR Ticket delivered to {to_email} via Resend HTTP API (Port 443 HTTPS)!")
                 return True
     except urllib.error.HTTPError as http_err:
         try:
@@ -52,7 +65,7 @@ def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: 
                     req2 = urllib.request.Request(url, data=data, headers=headers, method="POST")
                     with urllib.request.urlopen(req2, timeout=12) as resp2:
                         if resp2.status in (200, 201):
-                            print(f"✅ Email successfully delivered to verified inbox ({allowed_email}) via Resend HTTPS API!")
+                            print(f"✅ Email & QR Ticket successfully delivered to verified inbox ({allowed_email}) via Resend HTTPS API!")
                             return True
         except Exception as retry_err:
             print(f"Resend sandbox retry notice: {retry_err}")
@@ -60,7 +73,7 @@ def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: 
         print(f"Notice on Resend HTTP API dispatch: {e}")
     return False
 
-def _send_via_brevo_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
+def _send_via_brevo_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str, qr_code_b64: str = None) -> bool:
     try:
         url = "https://api.brevo.com/v3/smtp/email"
         headers = {
@@ -70,12 +83,26 @@ def _send_via_brevo_http(api_key: str, to_email: str, subject: str, body_html: s
             "User-Agent": UA_HEADER
         }
         sender_email = from_email if ("@" in from_email and "gmail.com" not in from_email) else "tickets@booking-platform.com"
+        full_html = body_html
+        if qr_code_b64 and "cid:qrcode_image" not in body_html:
+            full_html += '<br/><div style="margin:20px 0;padding:20px;background:#0f172a;border-radius:12px;border:1px solid #6366f1;text-align:center;"><h3 style="color:#ffffff;margin-top:0;">🎟️ Your Official Venue Entry QR Pass</h3><img src="cid:qrcode_image" alt="QR Ticket Pass" style="max-width:240px;border-radius:8px;border:2px solid #6366f1;display:block;margin:12px auto;"/><p style="color:#94a3b8;font-size:12px;margin-bottom:0;">Please present this digital pass at the entrance gate.</p></div>'
+
         payload = {
             "sender": {"name": "Ticketsmith Platform", "email": sender_email},
             "to": [{"email": to_email}],
             "subject": subject,
-            "htmlContent": body_html
+            "htmlContent": full_html
         }
+
+        if qr_code_b64:
+            raw_b64 = qr_code_b64.split(",")[-1] if "," in qr_code_b64 else qr_code_b64
+            payload["attachment"] = [
+                {
+                    "content": raw_b64,
+                    "name": "ticket_qr.png"
+                }
+            ]
+
         data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=12) as resp:
@@ -120,7 +147,7 @@ def _get_mailersend_domain(api_key: str) -> str:
         print(f"Notice fetching MailerSend domain: {e}")
     return "trial-custom.mlsender.net"
 
-def _send_via_mailersend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
+def _send_via_mailersend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str, qr_code_b64: str = None) -> bool:
     try:
         url = "https://api.mailersend.com/v1/email"
         headers = {
@@ -134,17 +161,33 @@ def _send_via_mailersend_http(api_key: str, to_email: str, subject: str, body_ht
             domain = _get_mailersend_domain(api_key)
             sender_email = f"tickets@{domain}"
 
+        full_html = body_html
+        if qr_code_b64 and "cid:qrcode_image" not in body_html:
+            full_html += '<br/><div style="margin:20px 0;padding:20px;background:#0f172a;border-radius:12px;border:1px solid #6366f1;text-align:center;"><h3 style="color:#ffffff;margin-top:0;">🎟️ Your Official Venue Entry QR Pass</h3><img src="cid:qrcode_image" alt="QR Ticket Pass" style="max-width:240px;border-radius:8px;border:2px solid #6366f1;display:block;margin:12px auto;"/><p style="color:#94a3b8;font-size:12px;margin-bottom:0;">Please present this digital pass at the entrance gate.</p></div>'
+
         payload = {
             "from": {"email": sender_email, "name": "Ticketsmith Platform"},
             "to": [{"email": to_email, "name": "Ticket Customer"}],
             "subject": subject,
-            "html": body_html
+            "html": full_html
         }
+
+        if qr_code_b64:
+            raw_b64 = qr_code_b64.split(",")[-1] if "," in qr_code_b64 else qr_code_b64
+            payload["attachments"] = [
+                {
+                    "content": raw_b64,
+                    "filename": "ticket_qr.png",
+                    "id": "qrcode_image",
+                    "disposition": "inline"
+                }
+            ]
+
         data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=12) as resp:
             if resp.status in (200, 201, 202):
-                print(f"✅ Email delivered to {to_email} via MailerSend HTTP API (Port 443 HTTPS)!")
+                print(f"✅ Email & QR Ticket delivered to {to_email} via MailerSend HTTP API (Port 443 HTTPS)!")
                 return True
     except urllib.error.HTTPError as http_err:
         try:
@@ -173,21 +216,23 @@ def _sync_send_email(
     # 1. Try MailerSend / MailerLite HTTP API over HTTPS (Port 443)
     if mailersend_key:
         print("🚀 Attempting dispatch via MailerSend HTTP API (HTTPS Port 443)...")
-        if _send_via_mailersend_http(mailersend_key, to_email, subject, body_html, os.getenv("SMTP_FROM", "")):
+        if _send_via_mailersend_http(mailersend_key, to_email, subject, body_html, os.getenv("SMTP_FROM", ""), qr_code_b64):
             print("=======================================================\n")
             return True
 
     # 2. Try Resend HTTP API over HTTPS (Port 443)
     if resend_key:
         print("🚀 Attempting dispatch via Resend HTTP API (HTTPS Port 443)...")
-        if _send_via_resend_http(resend_key, to_email, subject, body_html, os.getenv("SMTP_FROM", "")):
+        if _send_via_resend_http(resend_key, to_email, subject, body_html, os.getenv("SMTP_FROM", ""), qr_code_b64):
             print("=======================================================\n")
             return True
 
     # 3. Try Brevo HTTP API over HTTPS (Port 443)
     if brevo_key:
         print("🚀 Attempting dispatch via Brevo HTTP API (HTTPS Port 443)...")
-        if _send_via_brevo_http(brevo_key, to_email, subject, body_html, os.getenv("SMTP_FROM", "")):
+        if _send_via_brevo_http(brevo_key, to_email, subject, body_html, os.getenv("SMTP_FROM", ""), qr_code_b64):
+            print("=======================================================\n")
+            return True
             print("=======================================================\n")
             return True
             return True
