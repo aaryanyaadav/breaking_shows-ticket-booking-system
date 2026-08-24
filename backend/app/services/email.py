@@ -145,8 +145,19 @@ def _sync_send_email(
             return True
 
     except Exception as e:
-        print(f"❌ SMTP delivery error for {to_email}: {e}")
-        print("=======================================================\n")
+        err_str = str(e)
+        if "101" in err_str or "unreachable" in err_str.lower():
+            print("=======================================================")
+            print("❌ RENDER CLOUD FIREWALL NOTICE:")
+            print("Render Free Tier blocks outbound SMTP socket ports (587 / 465).")
+            print("To enable instant live email delivery on Render Free Tier:")
+            print("1. Get a free key from resend.com or brevo.com (100% free - 3,000 emails/mo).")
+            print("2. Add `RESEND_API_KEY` or `BREVO_API_KEY` in Render Environment Variables.")
+            print("HTTPS API requests run on Port 443, which is 100% allowed on Render!")
+            print("=======================================================\n")
+        else:
+            print(f"❌ SMTP delivery error for {to_email}: {e}")
+            print("=======================================================\n")
         logger.error(f"SMTP delivery error for {to_email}: {e}")
         return False
 
