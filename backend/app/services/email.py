@@ -11,11 +11,14 @@ from email.mime.image import MIMEImage
 
 logger = logging.getLogger("email_service")
 
+UA_HEADER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+
 def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
     url = "https://api.resend.com/emails"
     headers = {
         "Authorization": f"Bearer {api_key.strip()}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": UA_HEADER
     }
     # Resend testing sender requirement
     sender = "onboarding@resend.dev"
@@ -63,7 +66,8 @@ def _send_via_brevo_http(api_key: str, to_email: str, subject: str, body_html: s
         headers = {
             "api-key": api_key.strip(),
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "User-Agent": UA_HEADER
         }
         sender_email = from_email if ("@" in from_email and "gmail.com" not in from_email) else "tickets@booking-platform.com"
         payload = {
@@ -94,9 +98,10 @@ def _send_via_mailersend_http(api_key: str, to_email: str, subject: str, body_ht
         headers = {
             "Authorization": f"Bearer {api_key.strip()}",
             "Content-Type": "application/json",
-            "X-Requested-With": "XMLHttpRequest"
+            "Accept": "application/json",
+            "User-Agent": UA_HEADER
         }
-        sender_email = from_email if ("@" in from_email and "gmail.com" not in from_email) else "info@trial-custom.mlsender.net"
+        sender_email = os.getenv("MAILERSEND_FROM", "").strip() or "info@trial-custom.mlsender.net"
         payload = {
             "from": {"email": sender_email, "name": "Ticketsmith Platform"},
             "to": [{"email": to_email, "name": "Ticket Customer"}],
