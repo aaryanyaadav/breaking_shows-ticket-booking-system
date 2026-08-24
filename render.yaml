@@ -1,0 +1,64 @@
+# Render Infrastructure-as-Code Blueprint
+# Automatically provisions PostgreSQL, Redis, FastAPI Backend, and React Frontend
+
+services:
+  # 1. FastAPI Backend Web Service
+  - type: web
+    name: ticket-backend
+    env: python
+    region: singapore
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ticket-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: ticket-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+  # 2. React Frontend Static Site
+  - type: web
+    name: ticket-frontend
+    env: static
+    region: singapore
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_BACKEND_URL
+        fromService:
+          type: web
+          name: ticket-backend
+          property: url
+
+# Managed Databases
+databases:
+  - name: ticket-postgres
+    databaseName: ticket_booking_db
+    user: ticket_user
+    region: singapore
+
+# Managed Redis Cache
+redis:
+  - name: ticket-redis
+    region: singapore
+    plan: free
