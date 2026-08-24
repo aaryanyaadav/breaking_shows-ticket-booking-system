@@ -15,23 +15,22 @@ def _sync_send_email(
     body_html: str,
     qr_code_b64: str = None
 ) -> bool:
-    print("\n=======================================================")
-    print(f"📧 [EMAIL SERVICE] Dispatching to recipient: {to_email}")
-    print(f"📌 Subject: {subject}")
-    print("-------------------------------------------------------")
-    print(f"Body snippet: {body_html[:200]}...")
-    if qr_code_b64:
-        print(f"🎟️ QR Code Ticket Pass attached (Base64 len: {len(qr_code_b64)})")
-    print("=======================================================\n")
-
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_user = os.getenv("SMTP_USER", "").strip() or "projects.aky@gmail.com"
-    smtp_pass = (os.getenv("SMTP_PASS", "").strip() or "ynsyxxbpiacuofuo").replace(" ", "")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "").strip()
+    smtp_pass = os.getenv("SMTP_PASS", "").strip().replace(" ", "")
     smtp_from = os.getenv("SMTP_FROM", smtp_user).strip() or smtp_user
 
+    print("\n=======================================================")
+    print(f"📧 [EMAIL SERVICE] Recipient: {to_email}")
+    print(f"📧 [EMAIL SERVICE] Sender: {smtp_from} (User: {smtp_user})")
+    print(f"📌 Subject: {subject}")
+
     if not smtp_user or not smtp_pass:
-        logger.info(f"SMTP credentials not configured. Email logged to console/DB for {to_email}.")
-        return True
+        print("⚠️ [EMAIL NOTICE] SMTP_USER or SMTP_PASS environment variable is missing on cloud server.")
+        print("Please configure SMTP_USER and SMTP_PASS in your Render Environment Variables tab.")
+        print("=======================================================\n")
+        return False
 
     try:
         msg = MIMEMultipart("related")
@@ -62,25 +61,28 @@ def _sync_send_email(
 
         # Attempt 1: Port 587 (TLS)
         try:
-            with smtplib.SMTP(smtp_host, 587, timeout=12) as server:
+            with smtplib.SMTP(smtp_host, 587, timeout=15) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.sendmail(smtp_from, [to_email], msg.as_string())
             print(f"✅ Real Email successfully delivered to ({to_email}) via Port 587 TLS!")
+            print("=======================================================\n")
             logger.info(f"Real Email dispatched to {to_email} via Port 587 TLS")
             return True
         except Exception as err587:
             print(f"Notice: Port 587 TLS notice ({err587}). Attempting Port 465 SSL fallback...")
             # Attempt 2: Port 465 (SSL Fallback)
-            with smtplib.SMTP_SSL(smtp_host, 465, timeout=12) as server:
+            with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
                 server.login(smtp_user, smtp_pass)
                 server.sendmail(smtp_from, [to_email], msg.as_string())
             print(f"✅ Real Email successfully delivered to ({to_email}) via Port 465 SSL!")
+            print("=======================================================\n")
             logger.info(f"Real Email dispatched to {to_email} via Port 465 SSL")
             return True
 
     except Exception as e:
-        print(f"⚠️ SMTP delivery error for {to_email}: {e}")
+        print(f"❌ SMTP delivery error for {to_email}: {e}")
+        print("=======================================================\n")
         logger.error(f"SMTP delivery error for {to_email}: {e}")
         return False
 
