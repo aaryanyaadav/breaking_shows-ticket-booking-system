@@ -229,6 +229,16 @@ async def on_startup():
     asyncio.create_task(start_background_worker())
 
 
+@app.get("/")
+async def root():
+    return {
+        "name": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "status": "online",
+        "docs_url": "/docs",
+        "api_v1_url": "/api/v1/events"
+    }
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
