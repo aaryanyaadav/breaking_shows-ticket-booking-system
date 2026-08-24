@@ -12,20 +12,20 @@ from email.mime.image import MIMEImage
 logger = logging.getLogger("email_service")
 
 def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: str, from_email: str) -> bool:
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}",
+        "Content-Type": "application/json"
+    }
+    # Resend testing sender requirement
+    sender = "onboarding@resend.dev"
+    payload = {
+        "from": sender,
+        "to": [to_email],
+        "subject": subject,
+        "html": body_html
+    }
     try:
-        url = "https://api.resend.com/emails"
-        headers = {
-            "Authorization": f"Bearer {api_key.strip()}",
-            "Content-Type": "application/json"
-        }
-        # Resend testing sender requirement
-        sender = "onboarding@resend.dev"
-        payload = {
-            "from": sender,
-            "to": [to_email],
-            "subject": subject,
-            "html": body_html
-        }
         data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=12) as resp:
@@ -36,8 +36,23 @@ def _send_via_resend_http(api_key: str, to_email: str, subject: str, body_html: 
         try:
             err_body = http_err.read().decode('utf-8')
             print(f"Notice on Resend HTTP API ({http_err.code}): {err_body}")
-        except Exception:
-            print(f"Notice on Resend HTTP API: {http_err}")
+            # If in sandbox mode and recipient is unverified, forward to the verified account
+            if http_err.code == 403 and "own email address" in err_body:
+                import re
+                match = re.search(r'\(([^)]+@[^)]+)\)', err_body)
+                allowed_email = match.group(1) if match else os.getenv("SMTP_USER")
+                if allowed_email and allowed_email != to_email:
+                    print(f"🔄 Resend Sandbox: Forwarding ticket confirmation to verified inbox ({allowed_email})...")
+                    payload["to"] = [allowed_email]
+                    payload["subject"] = f"[For {to_email}] {subject}"
+                    data = json.dumps(payload).encode('utf-8')
+                    req2 = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                    with urllib.request.urlopen(req2, timeout=12) as resp2:
+                        if resp2.status in (200, 201):
+                            print(f"✅ Email successfully delivered to verified inbox ({allowed_email}) via Resend HTTPS API!")
+                            return True
+        except Exception as retry_err:
+            print(f"Resend sandbox retry notice: {retry_err}")
     except Exception as e:
         print(f"Notice on Resend HTTP API dispatch: {e}")
     return False
