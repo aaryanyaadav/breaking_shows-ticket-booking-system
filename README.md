@@ -1,206 +1,107 @@
-# Ticketsmith - Ticket Booking Platform
+# 🎟️ Ticketsmith - Ticket Booking Platform
 
-High-concurrency ticket booking platform built with FastAPI, PostgreSQL, Redis, WebSockets, Docker, and React.
+An enterprise-grade, high-concurrency event ticketing and seat allocation platform built with **FastAPI**, **PostgreSQL**, **Redis**, **WebSockets**, **Docker**, and **React**.
 
-## Table of Contents
-1. Features and Capabilities
-2. Quickstart and Setup Guide
-3. Database Structure Explanation & Local vs Production Setup
-4. Production Deployment Guide (Cloud / VPS)
-5. Environment Configuration (.env.example)
-6. Database Schema and Relationships
-7. REST API Documentation
-8. System Design Write-Up & Mermaid Architecture Diagrams
+Designed to handle flash-sale ticket traffic with **zero double-bookings**, **atomic Redis Lua seat locking**, **10-minute hold TTLs**, **category-aware FIFO waitlists**, and **automated QR ticket pass dispatch**.
 
 ---
 
-## Features and Capabilities
+## 📸 Screenshots & Visual Tour
 
-- Role-Based Portals (CUSTOMER / ORGANISER / ADMIN):
-  - Admin Console: Build custom physical screen venues (Rows, Seats per Row, VIP / Premium / Standard tiers), monitor global platform revenue, and audit registered Organisers & listings.
-  - Organiser Portal: Financial control dashboard with total earnings (INR), customer ticket audit tables (Name, Email, Assigned Seat Numbers), per-category sales metrics, show scheduling, and event deletion.
-  - Customer Flow: Browse events, interactive seat selection, atomic checkout, QR ticket generation, and waitlist management.
-- Atomic Concurrency Protection: Multi-seat locking powered by Redis Lua scripts to guarantee two customers can never hold or book the same seat simultaneously.
-- Configurable Hold TTL: 10-minute hold TTL with automated background expiration worker and WebSocket seat map broadcasts.
-- Category-Aware Waitlist Queue: Sold-out seat category queues (VIP, PREMIUM, STANDARD) with automated seat re-assignment upon booking cancellation.
-- Time-Limited Seat Offers: 15-minute exclusive claim link notifications sent to waitlisted users via free email notification service.
-- QR Code Tickets: High-resolution QR codes encoding booking reference, ticket reference, and customer email, attached to confirmation emails and UI passes.
+### 1. Interactive Real-Time Seat Matrix & Category Tiers
+Select VIP, Premium, or Standard seats with instant optimistic locking and live WebSocket occupancy updates across connected clients.
+
+![Interactive Seat Selection](docs/screenshots/seat_selection_ui.png)
 
 ---
 
-## Database Structure & Local vs Production Overview
+### 2. Organiser Financial Dashboard & Customer Ticket Audit
+Monitor real-time gross revenue, view per-tier sales distributions, and audit individual customer bookings with assigned seat numbers and payment statuses.
 
-### 1. Database Structure
-The application uses a **relational database model** designed in **PostgreSQL** (managed asynchronously via SQLAlchemy ORM):
-
-- **User Accounts (`users`)**: Stores Customer, Organiser, and Admin profiles, hashed passwords, and role ENUMs.
-- **Auditoriums & Layout Grids (`venues`, `venue_seats`)**: Stores screen auditoriums and their seating grid coordinates (Row A, B, C... x Seat 1, 2, 3...).
-- **Seat Category Tiers (`seat_categories`)**: Allocates `VIP`, `PREMIUM`, and `STANDARD` seat sections to screen venues.
-- **Events & Shows (`events`, `shows`)**: Connects Organiser-created events to scheduled showtimes at screen venues.
-- **Show Inventory (`show_seats`)**: Tracks real-time status (`AVAILABLE`, `HELD`, `BOOKED`, `OFFERED`), price, and optimistic locking `version` counter per seat.
-- **Transient Holds (`holds`, `hold_items`)**: Stores 10-minute hold reservations with unique `hold_token` UUIDs.
-- **Financial Ledger (`bookings`, `booking_seats`, `payments`, `tickets`)**: Stores booking references (`BK-XXXXXX`), confirmed seat items, payment status, and base64 QR tickets.
-- **Category Waitlists (`waitlist_entries`, `waitlist_offers`)**: Tracks FIFO customer queue position per category and active 15-minute time-limited claim offers.
-
-### 2. Is it Local?
-- **Yes, for development**: By default, PostgreSQL runs locally inside a dedicated Docker container (`ticket_postgres`) on port `5432`.
-- Data is persisted locally on your computer via Docker named volumes (`postgres_data`).
-- Redis also runs locally inside container `ticket_redis` on port `6379`.
+![Organiser Analytics Dashboard](docs/screenshots/organiser_dashboard_ui.png)
 
 ---
 
-## Production Deployment Guide
+### 3. Event Discovery & Checkout Flow
+Browse live movies and concerts, view active venue schedules, reserve multi-seat batches, and generate secure scannable digital QR passes.
 
-Deploying Ticketsmith to production can be done in two ways:
-
-### Option A: Managed Cloud Deployment (AWS / Render / Railway / Vercel) - Recommended
-
-1. **Database**: Provision a managed PostgreSQL instance (e.g. AWS RDS PostgreSQL, Render PostgreSQL, or Railway Postgres). Obtain your production connection string:
-   `postgresql+asyncpg://user:pass@production-db-host:5432/ticket_db`
-2. **In-Memory Redis**: Provision a managed Redis instance (e.g. AWS ElastiCache, Redis Cloud, or Upstash).
-3. **Backend API (FastAPI)**: Deploy the backend container to AWS ECS, Render, or Railway. Set environment variables (`DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `SMTP_*`).
-4. **Frontend UI (React Vite)**: Build the static bundle (`npm run build`) and deploy `dist/` to Vercel, Netlify, or AWS S3 + CloudFront.
-
-### Option B: Single VPS Deployment (DigitalOcean / EC2 / Hetzner)
-
-1. Provision a VPS running Ubuntu 22.04 LTS.
-2. Install Docker and Docker Compose:
-   ```bash
-   sudo apt update && sudo apt install -y docker.io docker-compose
-   ```
-3. Clone the codebase and configure production passwords in `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-4. Run in detached background mode:
-   ```bash
-   docker-compose up -d --build
-   ```
-5. Set up Nginx as a reverse proxy with Certbot for free SSL:
-   ```bash
-   sudo apt install -y nginx certbot python3-certbot-nginx
-   sudo certbot --nginx -d yourdomain.com
-   ```
+![Event Booking and Checkout](docs/screenshots/booking_and_events_ui.png)
 
 ---
 
-## Environment Configuration (.env.example)
+## 🚀 Key Features & Capabilities
 
-```env
-POSTGRES_USER=ticket_user
-POSTGRES_PASSWORD=ticket_password
-POSTGRES_DB=ticket_booking_db
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-DATABASE_URL=postgresql+asyncpg://ticket_user:ticket_password@postgres:5432/ticket_booking_db
-
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_URL=redis://redis:6379/0
-
-SECRET_KEY=super-secret-jwt-key-for-ticket-booking-platform-2026
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-
-DEFAULT_HOLD_TTL_SECONDS=600
-OFFER_TTL_SECONDS=900
-
-BACKEND_URL=http://backend:8000
-```
+- **Strict Role-Based Access Control (RBAC)**:
+  - **Master Admin**: Manage physical auditorium venues, build custom seat grid layouts (Rows, Seats per Row, VIP/Premium/Standard tiers), audit platform health, and oversee all organiser listings.
+  - **Organisers**: Create, update, and delete events, schedule multi-screen showtimes, monitor gross INR revenue, and export customer ticket audit ledgers.
+  - **Customers**: Search events, inspect real-time interactive seat maps, lock seats atomically, complete checkout, view digital QR tickets, and claim waitlist offers.
+- **Atomic Multi-Seat Concurrency Protection**: Redis Lua scripts serialize concurrent seat selection requests, guaranteeing two customers can never hold or buy the same seat simultaneously.
+- **Configurable Hold TTL (600s)**: 10-minute transient hold expiration with background worker cleanup and instant WebSocket seat matrix synchronization.
+- **Category-Aware FIFO Waitlist**: Sold-out seat category queues (`VIP`, `PREMIUM`, `STANDARD`) with automated seat re-assignment upon cancellation.
+- **15-Minute Exclusive Seat Offers**: Time-limited claim links sent to waitlisted customers with automatic cascading to the next user in line upon expiry.
+- **Digital QR Ticket Passes**: High-resolution QR codes encoding booking reference, ticket reference, and customer email, attached to email confirmations and customer dashboards.
+- **Multi-Channel Cloud Email Dispatch**: Resilient transactional email delivery supporting **MailerSend REST API**, **Resend HTTP API**, and **Brevo HTTP API** over Port 443 HTTPS.
 
 ---
 
-## Database Schema and Relationships
+## 🗄️ Database Schema and Entity Relationships
 
-PostgreSQL relational integrity (FOREIGN KEY ... ON DELETE CASCADE):
-- `users`: User accounts with role ENUM (CUSTOMER, ORGANISER, ADMIN).
-- `venues`: Physical auditorium screens and layout dimensions.
-- `venue_seats`: Base physical seating layout grid (row, number, category).
-- `events`: Published movie/concert/event listings owned by Organiser.
-- `shows`: Scheduled showtimes mapped to venues and events.
-- `show_seats`: Per-show seat inventory, prices, status (AVAILABLE, HELD, BOOKED, OFFERED), and version counter.
-- `holds`: Active transient seat holds with 10-minute TTL.
-- `bookings`: Confirmed customer booking references and transaction amounts.
-- `tickets`: QR payload passes issued upon payment.
-- `waitlist_entries`: FIFO queue per category for sold-out shows.
-- `waitlist_offers`: Time-limited (15-min) seat claim offers assigned to next-in-line waitlisted users.
-
----
-
-## REST API Documentation
-
-### Auth (/api/v1/auth)
-- POST /api/v1/auth/register - Register customer/organiser/admin
-- POST /api/v1/auth/login - Login and receive JWT
-- GET /api/v1/auth/me - Authenticated user profile
-
-### Events & Organiser Analytics (/api/v1/events)
-- GET /api/v1/events - Browse published events
-- GET /api/v1/events/organiser-analytics - Per-event earnings & customer ticket details
-- POST /api/v1/events - Create new event (Organiser)
-- DELETE /api/v1/events/{id} - Delete event & cascade bookings (Organiser/Admin)
-
-### Venues & Seats (/api/v1/venues)
-- GET /api/v1/venues - List screen venues
-- POST /api/v1/venues - Build custom seat grid layout (Admin)
-
-### Holds & Bookings (/api/v1/holds, /api/v1/bookings)
-- POST /api/v1/holds - Atomic multi-seat lock with 10-min TTL
-- POST /api/v1/bookings - Create pending booking
-- POST /api/v1/bookings/mock-pay - Execute payment & generate QR ticket
-- POST /api/v1/bookings/{id}/cancel - Cancel booking & auto-offer to waitlist
-
-### Waitlist (/api/v1/waitlist)
-- POST /api/v1/waitlist/join - Join category waitlist
-- GET /api/v1/waitlist/my-offers - List active 15-min seat claim offers
-- POST /api/v1/waitlist/offers/{id}/accept - Accept offer & claim seat hold
-
----
-
-## System Design Write-Up & Mermaid Architecture Diagrams
-
-### 🏗️ High-Level System Architecture Diagram
+The platform uses a relational PostgreSQL database schema with strict foreign key constraints, cascading rules, and optimistic locking version counters.
 
 ```mermaid
-graph TD
-    subgraph Clients["Client Layer"]
-        C1["Customer Web Browser"]
-        C2["Organiser Portal"]
-        C3["Admin Console"]
-    end
-
-    subgraph AppServer["Application Services (FastAPI + Python)"]
-        API["FastAPI REST Endpoints"]
-        WS["WebSocket Manager"]
-        BackgroundWorker["Background Scheduler & TTL Cleaner"]
-        EmailSvc["Free Email Notification Service"]
-    end
-
-    subgraph InMem["In-Memory & Distributed Lock Layer"]
-        Redis[("Redis Database\nAtomic Lua Scripting\nTransient Seat Holds TTL")]
-    end
-
-    subgraph RelationalDB["Durable Storage Layer"]
-        Postgres[("PostgreSQL Database\nACID Transactions & Constraints\nOptimistic Version Counters")]
-    end
-
-    C1 -->|REST API Requests| API
-    C2 -->|Manage Events & Financial Audit| API
-    C3 -->|Build Venues & Screen Layouts| API
+erDiagram
+    USERS ||--o{ EVENTS : organizes
+    USERS ||--o{ HOLDS : initiates
+    USERS ||--o{ BOOKINGS : places
+    USERS ||--o{ WAITLIST_ENTRIES : joins
     
-    API <-->|Atomic Lua Locks| Redis
-    API <-->|Async ORM / SQL| Postgres
-    API -->|Broadcast Seat Map Updates| WS
-    WS -->|Real-Time Status Feeds| C1
+    VENUES ||--o{ VENUE_SEATS : contains
+    VENUES ||--o{ SEAT_CATEGORIES : defines
+    VENUES ||--o{ SHOWS : hosts
     
-    BackgroundWorker <-->|Check Expired Holds & Offers| Postgres
-    BackgroundWorker -->|Trigger Auto-Offers| EmailSvc
-    EmailSvc -->|HTML Ticket & Claim Links| C1
+    EVENTS ||--o{ SHOWS : schedules
+    SHOWS ||--o{ SHOW_SEATS : allocates
+    
+    VENUE_SEATS ||--o{ SHOW_SEATS : templates
+    SEAT_CATEGORIES ||--o{ VENUE_SEATS : classifies
+    
+    HOLDS ||--o{ HOLD_ITEMS : contains
+    SHOW_SEATS ||--o{ HOLD_ITEMS : reserved_in
+    
+    BOOKINGS ||--o{ BOOKING_SEATS : contains
+    BOOKINGS ||--o{ PAYMENTS : settles
+    BOOKINGS ||--o{ TICKETS : issues
+    SHOW_SEATS ||--o{ BOOKING_SEATS : booked_as
+    
+    SHOWS ||--o{ WAITLIST_ENTRIES : queues
+    WAITLIST_ENTRIES ||--o{ WAITLIST_OFFERS : receives
 ```
+
+### Table Definitions & Constraints
+
+| Table | Description | Primary Key | Foreign Keys / Constraints |
+| :--- | :--- | :--- | :--- |
+| `users` | Customer, Organiser, and Master Admin accounts | `id` (UUID) | `email` UNIQUE, `role` ENUM (`CUSTOMER`, `ORGANISER`, `ADMIN`) |
+| `venues` | Screen auditoriums and physical venues | `id` (UUID) | `name` UNIQUE, `created_by` -> `users.id` |
+| `seat_categories` | Pricing and tier classifications | `id` (UUID) | `venue_id` -> `venues.id`, `name` (`VIP`, `PREMIUM`, `STANDARD`) |
+| `venue_seats` | Base physical seating grid | `id` (UUID) | `venue_id` -> `venues.id`, `category_id` -> `seat_categories.id`, UNIQUE(`venue_id`, `seat_label`) |
+| `events` | Movies, concerts, and live shows | `id` (UUID) | `organiser_id` -> `users.id` (ON DELETE CASCADE) |
+| `shows` | Scheduled showtimes for events at venues | `id` (UUID) | `event_id` -> `events.id`, `venue_id` -> `venues.id` |
+| `show_seats` | Real-time seat inventory per show | `id` (UUID) | `show_id` -> `shows.id`, `venue_seat_id` -> `venue_seats.id`, `version` INT (Optimistic Lock) |
+| `holds` | 10-minute transient seat hold reservations | `id` (UUID) | `user_id` -> `users.id`, `show_id` -> `shows.id`, `hold_token` UNIQUE |
+| `hold_items` | Individual seats locked under a hold | `id` (UUID) | `hold_id` -> `holds.id` (ON DELETE CASCADE), `show_seat_id` -> `show_seats.id` |
+| `bookings` | Confirmed financial transactions | `id` (UUID) | `booking_reference` UNIQUE, `user_id` -> `users.id`, `show_id` -> `shows.id` |
+| `booking_seats` | Confirmed seat items linked to booking | `id` (UUID) | `booking_id` -> `bookings.id` (ON DELETE CASCADE), `show_seat_id` -> `show_seats.id` |
+| `payments` | Transaction receipts and payment audit | `id` (UUID) | `booking_id` -> `bookings.id`, `provider_payment_id` |
+| `tickets` | QR payload and digital ticket passes | `id` (UUID) | `ticket_reference` UNIQUE, `booking_id` -> `bookings.id` |
+| `waitlist_entries` | FIFO queue for sold-out seat tiers | `id` (UUID) | `show_id` -> `shows.id`, `category_id` -> `seat_categories.id`, `user_id` -> `users.id` |
+| `waitlist_offers` | 15-minute time-limited claim offers | `id` (UUID) | `waitlist_entry_id` -> `waitlist_entries.id`, `show_seat_id` -> `show_seats.id` |
 
 ---
 
-### 🔒 Atomic Seat Hold & Concurrency Control Sequence
+## 🔒 Seat Hold and Concurrency Control Logic
+
+In flash-sale event ticketing, thousands of concurrent requests can target the exact same seat within milliseconds. Ticketsmith solves this using a **two-tier locking strategy**: **In-Memory Redis Lua Atomic Locks** + **Database Optimistic Concurrency Control**.
 
 ```mermaid
 sequenceDiagram
@@ -210,31 +111,71 @@ sequenceDiagram
     participant API as FastAPI Backend
     participant Redis as Redis (Atomic Lua)
     participant DB as PostgreSQL
-    participant WS as WebSocket Clients
-
-    Customer1->>API: POST /api/v1/holds (Seat A1)
+    participant WS as WebSocket Broadcast
+    
+    Customer1->>API: POST /api/v1/holds (Seats A1, A2)
     Customer2->>API: POST /api/v1/holds (Seat A1)
     
     Note over API,Redis: Redis Lua Script Serialization
-    API->>Redis: Execute Lua: EXCLUDE_IF_EXISTS(A1)
-    Redis-->>API: 1 (SUCCESS - Lock acquired by Customer A)
+    API->>Redis: Execute Lua: EVAL hold_seats.lua
+    Redis-->>API: 1 (SUCCESS - Customer A acquires keys)
     
-    API->>Redis: Execute Lua: EXCLUDE_IF_EXISTS(A1)
-    Redis-->>API: 0 (FAILED - Key already exists)
+    API->>Redis: Execute Lua: EVAL hold_seats.lua
+    Redis-->>API: 0 (FAILED - Key 'hold:A1' already locked)
     
     API->>DB: INSERT INTO holds (expires_at = NOW() + 10m)
     API->>DB: UPDATE show_seats SET status='HELD', version=version+1
     
-    API-->>Customer1: 201 CREATED (Hold Token Issued)
-    API-->>Customer2: 409 CONFLICT ("Race condition detected! Seat occupied")
+    API-->>Customer1: 201 Created (Hold Token Issued)
+    API-->>Customer2: 409 Conflict ("Seat already reserved by another user")
     
-    API->>WS: Broadcast SEAT_STATUS_CHANGED (Seat A1 = HELD)
-    WS-->>Customer2: Visual Seat Map Updates to HELD
+    API->>WS: Broadcast SEAT_STATUS_CHANGED (A1, A2 = HELD)
+    WS-->>Customer2: Real-time map updates A1 to HELD (Yellow)
 ```
+
+### 1. Redis Lua Atomic Lock (`execute_atomic_hold`)
+HTTP requests operate concurrently across multiple asynchronous worker processes. A naive check-then-set approach (`SELECT status FROM show_seats WHERE id = seat_id`) produces classic TOCTOU (Time-Of-Check to Time-Of-Use) race conditions. 
+
+Ticketsmith executes an atomic Redis Lua script that checks and locks all requested seats in a single atomic CPU cycle:
+
+```lua
+-- Atomic Multi-Seat Hold Lua Script
+for i, key in ipairs(KEYS) do
+    if redis.call('EXISTS', key) == 1 then
+        return {0, key} -- Seat already held by another customer
+    end
+end
+
+for i, key in ipairs(KEYS) do
+    redis.call('SET', key, ARGV[1], 'EX', ARGV[3]) -- Atomically lock seat with 600s TTL
+end
+return {1, "OK"}
+```
+
+Because Redis executes Lua scripts sequentially on its main thread, concurrent requests targeting overlapping seats are strictly serialized. The winning request acquires the lock; all losing requests fail immediately with **HTTP 409 Conflict**.
+
+### 2. Database Optimistic Versioning
+At the persistent database layer, each `show_seats` record maintains an integer `version` counter. When transitioning a seat from `HELD` to `BOOKED` during payment confirmation:
+
+```sql
+UPDATE show_seats 
+SET status = 'BOOKED', version = version + 1 
+WHERE id IN (:seat_ids) AND version = :expected_version;
+```
+If any concurrent mutation altered the seat version in between, the query affects 0 rows, triggering an automatic rollback to prevent double-allocation.
+
+### 3. Background TTL Expiration Worker
+A background async task runs periodically every 15 seconds:
+- Queries active holds where `expires_at < NOW()`.
+- Transitions expired holds to `EXPIRED`.
+- Reverts the corresponding `show_seats` back to `AVAILABLE`.
+- Emits real-time WebSocket events (`SEAT_STATUS_CHANGED`) to all connected browser clients.
 
 ---
 
-### ⏳ Category Waitlist Auto-Assignment Flowchart
+## ⏳ Category-Aware Waitlist Queue & Auto-Assignment Logic
+
+When an event or specific seat tier (`VIP`, `PREMIUM`, `STANDARD`) sells out (`AVAILABLE == 0`), customers can join a category-specific FIFO waitlist queue.
 
 ```mermaid
 flowchart TD
@@ -244,85 +185,170 @@ flowchart TD
     
     C --> E[Set ShowSeat Status = OFFERED]
     E --> F[Generate WaitlistOffer with 15-Minute TTL]
-    F --> G[Send Email Notification with Time-Limited Claim Link]
+    F --> G[Send Email Notification with Claim Link]
     
     G --> H{Customer Claims Offer within 15 mins?}
     H -->|Yes: Click Link & Accept| I[Convert Offer to Active 10-Min Hold]
     I --> J[Proceed to Payment & Issue QR Ticket]
     
     H -->|No: TTL Expires| K[Mark Offer EXPIRED]
-    K --> L[Select Next Customer in Queue position+1]
+    K --> L[Select Next Customer in Queue: position + 1]
     L --> E
 ```
 
----
+### Waitlist Lifecycle & Cascading Auto-Assignment
 
-### 1. Seat Hold and TTL Mechanism
-In high-concurrency event ticketing systems, inventory reservations must remain transient until financial settlement. Ticketsmith implements a two-tier hold mechanism combining in-memory Redis key-space expiration with durable PostgreSQL transactions.
-
-When a customer selects a batch of seats, the client requests a hold via POST /api/v1/holds. The backend assigns a unique hold_token (UUIDv4) and sets a configurable Time-To-Live (TTL) of 10 minutes (600 seconds). The hold record is written to PostgreSQL with status ACTIVE and expires_at = now() + interval '10 minutes'. Concurrently, transient keys (hold:{show_id}:{seat_id}) are populated in Redis with matching TTLs.
-
-A background worker periodically scans for expired holds where expires_at < now() and status = 'ACTIVE'. Expired holds transition to EXPIRED, and the underlying show_seats are reverted from HELD back to AVAILABLE. Immediately following state transition, a WebSocket event (SEAT_STATUS_CHANGED) is broadcast to all active client sessions attached to that show room, updating visual seat maps in real time without client polling.
-
----
-
-### 2. Concurrency Prevention and Atomic Locking
-To guarantee that two customers attempting to hold or book the exact same seat simultaneously cannot both succeed, Ticketsmith enforces multi-layered concurrency protection using Redis Lua Scripting and Database Optimistic Locking.
-
-#### Redis Lua Script Atomic Lock (execute_atomic_hold)
-HTTP requests operate concurrently across multiple application workers. A naive check-then-set approach (SELECT status FROM show_seats WHERE id = seat_id) suffers from classic TOCTOU (Time-Of-Check to Time-Of-Use) race conditions under high traffic. To eliminate race conditions:
-
-```lua
--- Atomic Multi-Seat Hold Lua Script
-for i, key in ipairs(KEYS) do
-    if redis.call('EXISTS', key) == 1 then
-        return {0, key} -- Seat already locked by another customer
-    end
-end
-
-for i, key in ipairs(KEYS) do
-    redis.call('SET', key, ARGV[1], 'EX', ARGV[3]) -- Lock seat atomically
-end
-return {1, "OK"}
-```
-
-Because Redis executes Lua scripts single-threaded and atomically, concurrent requests targeting overlapping seat keys are serialized. The first request acquires the locks; subsequent requests fail instantly and return HTTP 409 CONFLICT ("Race condition detected! Seat was just grabbed by another customer").
-
-#### Database Optimistic Concurrency Control
-At the database layer, each show_seats row contains a version integer column. When updating seat status from HELD to BOOKED during payment confirmation:
-
-```sql
-UPDATE show_seats 
-SET status = 'BOOKED', version = version + 1 
-WHERE id IN (:seat_ids) AND version = :expected_version;
-```
-If another transaction mutated the seat version concurrently, the update returns zero affected rows, triggering a transaction rollback to prevent double booking.
-
----
-
-### 3. Waitlist Auto-Assignment Queue
-When an event or seat category (VIP, PREMIUM, STANDARD) sells out (AVAILABLE count = 0), customers can join a FIFO queue via POST /api/v1/waitlist/join. The system records a WaitlistEntry storing show_id, category_id, user_id, joined_at, and an incremental position index.
-
-When an existing booking is cancelled via POST /api/v1/bookings/{id}/cancel (or a seat is released due to payment failure), the system executes an automated re-assignment routine:
-
-1. Identifies the category of the freed seat (category_id).
-2. Queries waitlist_entries for the lowest position where status = 'WAITING' for that specific show and category.
-3. If a waiting customer exists:
-   - Sets show_seat.status = 'OFFERED'.
-   - Transitions WaitlistEntry.status = 'OFFERED'.
-   - Creates a WaitlistOffer record with status ACTIVE and expires_at = now() + interval '15 minutes'.
+1. **Queue Registration**: Customer calls `POST /api/v1/waitlist/join`. The system records a `WaitlistEntry` with an incremental `position` index for that specific `(show_id, category_id)`.
+2. **Seat Release Trigger**: When an existing booking is cancelled via `POST /api/v1/bookings/{id}/cancel` (or released due to payment failure):
+   - The system inspects the `category_id` of the released seat.
+   - Queries `waitlist_entries` for the lowest `position` where `status = 'WAITING'`.
+3. **Offer Generation (15-Minute TTL)**:
+   - Sets `ShowSeat.status = 'OFFERED'`.
+   - Transitions `WaitlistEntry.status = 'OFFERED'`.
+   - Creates a `WaitlistOffer` record with `expires_at = NOW() + 15 minutes`.
    - Dispatches an automated email notification containing an exclusive claim link.
-4. If no customer is waiting, show_seat.status reverts to AVAILABLE.
+4. **Offer Acceptance**:
+   - Customer calls `POST /api/v1/waitlist/offers/{offer_id}/accept`.
+   - Validates `status == 'ACTIVE'` and `expires_at > NOW()`.
+   - Converts the offer into an active 10-minute hold and routes customer to checkout.
+5. **Auto-Cascading on Expiry**:
+   - If the 15-minute offer TTL expires without claim, the offer is marked `EXPIRED`.
+   - The background scheduler automatically invokes the assignment engine to offer the seat to the next user in line (`position + 1`). This repeats recursively until the seat is claimed or the queue is exhausted.
 
 ---
 
-### 4. Time-Limited Offer Handling and Auto-Expiry
-Offers assigned to waitlisted users carry a strict 15-minute time window (OFFER_TTL_SECONDS = 900).
+## 📡 REST API Documentation
 
-- Offer Acceptance: The notified customer clicks the claim link (GET /waitlist?offer_id=...) and calls POST /api/v1/waitlist/offers/{offer_id}/accept. The system verifies Offer.status == 'ACTIVE' and expires_at > now(). Upon validation, WaitlistOffer.status transitions to ACCEPTED, WaitlistEntry.status transitions to FULFILLED, an active 10-minute hold is generated for the user, and the customer proceeds to checkout.
-- Offer Expiry & Cascade: If the 15-minute TTL expires without acceptance, the offer transitions to EXPIRED. The background scheduler detects the expired offer, frees the seat, and automatically re-invokes the waitlist auto-assignment algorithm to offer the seat to the next customer in line (position + 1). This cycle repeats recursively until all available inventory is claimed or the waitlist queue is exhausted.
+### 🔐 Authentication (`/api/v1/auth`)
+
+| Method | Endpoint | Access | Description | Request Body / Parameters | Response |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Public | Register Customer or Organiser | `{ "name": "...", "email": "...", "password": "...", "role": "CUSTOMER" }` | `201 Created` (User Object) |
+| `POST` | `/api/v1/auth/login` | Public | OAuth2 JWT Login | Form Data: `username`, `password` | `{ "access_token": "...", "token_type": "bearer", "user": {...} }` |
+| `GET` | `/api/v1/auth/me` | Authenticated | Get current profile | Header: `Authorization: Bearer <token>` | `200 OK` (Current User Profile) |
 
 ---
 
-## License & Author
-Built for production-grade ticket allocation standards by Ticketsmith Engineering. Open-source under the MIT License.
+### 🎭 Events & Organiser Management (`/api/v1/events`)
+
+| Method | Endpoint | Access | Description | Request Body / Parameters | Response |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/events` | Public | List all active events | Query: `search`, `category` | `200 OK` (Array of Events) |
+| `GET` | `/api/v1/events/{id}` | Public | Get event details with shows | Path: `id` | `200 OK` (Event with Shows & Venues) |
+| `POST` | `/api/v1/events` | Organiser / Admin | Create a new event listing | `{ "title": "...", "description": "...", "banner_url": "...", "duration_minutes": 120 }` | `201 Created` |
+| `GET` | `/api/v1/events/organiser-analytics` | Organiser / Admin | Financial revenue & customer ticket audit ledger | Header: `Authorization: Bearer <token>` | `200 OK` (Gross INR, bookings, seat numbers) |
+| `DELETE` | `/api/v1/events/{id}` | Organiser / Admin | Delete event & cascade shows | Path: `id` | `200 OK` |
+
+---
+
+### 🏛️ Venues & Screen Auditoriums (`/api/v1/venues`)
+
+| Method | Endpoint | Access | Description | Request Body / Parameters | Response |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/venues` | Authenticated | List all physical screen venues | Header: `Authorization: Bearer <token>` | `200 OK` (Array of Venues with Layouts) |
+| `POST` | `/api/v1/venues` | Admin | Build custom auditorium grid | `{ "name": "Screen 1", "rows": 8, "seats_per_row": 12, "categories": [...] }` | `201 Created` |
+
+---
+
+### 🎬 Shows & Inventory (`/api/v1/shows`)
+
+| Method | Endpoint | Access | Description | Request Body / Parameters | Response |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/shows/{id}/seats` | Public | Get real-time seat status matrix | Path: `id` | `200 OK` (Seat grid with `status`, `tier`, `price`) |
+| `POST` | `/api/v1/shows` | Organiser / Admin | Schedule showtime at venue | `{ "event_id": "...", "venue_id": "...", "start_time": "...", "pricing": {...} }` | `201 Created` |
+
+---
+
+### 🔒 Seat Holds (`/api/v1/holds`)
+
+| Method | Endpoint | Access | Description | Request Body / Parameters | Response |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/holds` | Authenticated | Atomically reserve multi-seat batch (10-min TTL) | `{ "show_id": "...", "seat_ids": ["uuid-1", "uuid-2"] }` | `201 Created` (`hold_token`, `expires_at`) |
+| `DELETE` | `/api/v1/holds/{hold_id}` | Authenticated | Release held seats manually | Path: `hold_id` | `200 OK` |
+
+---
+
+### 💳 Bookings & Checkout (`/api/v1/bookings`)
+
+| Method | Endpoint | Access | Description | Request Body / Parameters | Response |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/bookings` | Authenticated | Create pending booking from hold | `{ "hold_token": "...", "idempotency_key": "IDEM-..." }` | `201 Created` (`booking_reference`, `total_amount`) |
+| `POST` | `/api/v1/bookings/mock-pay` | Authenticated | Confirm payment, issue QR ticket & dispatch email | `{ "booking_id": "...", "payment_method": "CARD" }` | `200 OK` (`ticket_reference`, `qr_code_url`) |
+| `GET` | `/api/v1/bookings/my` | Authenticated | List current user bookings | Header: `Authorization: Bearer <token>` | `200 OK` (Bookings list with QR codes) |
+| `POST` | `/api/v1/bookings/{id}/cancel` | Authenticated | Cancel booking & trigger waitlist auto-offer | Path: `id` | `200 OK` (Seat offered to next in queue) |
+
+---
+
+### ⏳ Waitlists & Offers (`/api/v1/waitlist`)
+
+| Method | Endpoint | Access | Description | Request Body / Parameters | Response |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/waitlist/join` | Authenticated | Join FIFO queue for sold-out tier | `{ "show_id": "...", "category_id": "..." }` | `201 Created` (`position`, `status`) |
+| `GET` | `/api/v1/waitlist/my-offers` | Authenticated | List active 15-min claim offers | Header: `Authorization: Bearer <token>` | `200 OK` (Active offers with countdown) |
+| `POST` | `/api/v1/waitlist/offers/{id}/accept` | Authenticated | Claim offer & convert to 10-min hold | Path: `id` | `200 OK` (Converted to active hold) |
+
+---
+
+### 🔌 WebSocket Real-Time Channel
+
+- **Endpoint**: `WS /ws/shows/{show_id}`
+- **Protocol**: JSON message broadcast
+- **Event Payload Example**:
+  ```json
+  {
+    "event": "SEAT_STATUS_CHANGED",
+    "show_id": "e26836f9-0afb-4558-b137-fc13d89a14fb",
+    "seat_ids": ["c1a82f34-3112-4c22-9599-281b90d3d512"],
+    "status": "HELD",
+    "timestamp": "2026-08-24T20:15:00Z"
+  }
+  ```
+
+---
+
+## ⚙️ Environment Configuration (`.env.example`)
+
+```env
+# Database Configuration (PostgreSQL)
+POSTGRES_USER=ticket_user
+POSTGRES_PASSWORD=ticket_password
+POSTGRES_DB=ticket_booking_db
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+DATABASE_URL=postgresql+asyncpg://ticket_user:ticket_password@postgres:5432/ticket_booking_db
+
+# Redis In-Memory & Atomic Lock Cache
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_URL=redis://redis:6379/0
+
+# Security & JWT Configuration
+SECRET_KEY=super-secret-jwt-key-for-ticket-booking-platform-2026
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# Hold & Waitlist Timers (Seconds)
+DEFAULT_HOLD_TTL_SECONDS=600
+OFFER_TTL_SECONDS=900
+
+# Transactional Cloud Email API Keys (Port 443 HTTPS)
+MAILERSEND_API_KEY=mlsn.your_mailersend_key_here
+MAILERSEND_FROM=
+RESEND_API_KEY=
+BREVO_API_KEY=
+
+# Local / VPS Fallback SMTP (Optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=
+```
+
+---
+
+## 📄 License & Standards
+
+Built with enterprise concurrency and fault-tolerance patterns by **Ticketsmith Engineering**. 
+
+Licensed under the **MIT License**. Open-source for high-scale event allocation architectures.
