@@ -1,3 +1,4 @@
+import asyncio
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -8,15 +9,12 @@ import os
 
 logger = logging.getLogger("email_service")
 
-async def send_email_notification(
+def _sync_send_email(
     to_email: str,
     subject: str,
     body_html: str,
     qr_code_b64: str = None
-):
-    """
-    Email Notification Service with MIME CID inline QR attachments & Gmail SMTP delivery.
-    """
+) -> bool:
     print("\n=======================================================")
     print(f"📧 [EMAIL SERVICE] Dispatching to recipient: {to_email}")
     print(f"📌 Subject: {subject}")
@@ -28,8 +26,10 @@ async def send_email_notification(
 
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER", "").strip()
-    smtp_pass = os.getenv("SMTP_PASS", "").strip().replace(" ", "")
+    
+    # Fallback to projects.aky@gmail.com if cloud env vars are not set
+    smtp_user = os.getenv("SMTP_USER", "").strip() or "projects.aky@gmail.com"
+    smtp_pass = (os.getenv("SMTP_PASS", "").strip() or "ynsyxxbpiacuofuo").replace(" ", "")
     smtp_from = os.getenv("SMTP_FROM", smtp_user).strip() or smtp_user
 
     if not smtp_user or not smtp_pass:
@@ -51,7 +51,7 @@ async def send_email_notification(
 
         msg_alt.attach(MIMEText(html_content, "html"))
 
-        # Embed QR Code as MIME CID Inline Image Attachment for full Gmail/Outlook/Apple Mail support
+        # Embed QR Code as MIME CID Inline Image Attachment
         if qr_code_b64:
             try:
                 raw_b64 = qr_code_b64.split(",")[-1] if "," in qr_code_b64 else qr_code_b64
@@ -75,8 +75,19 @@ async def send_email_notification(
 
         print(f"✅ Real Email successfully delivered to user inbox ({to_email}) via Gmail SMTP!")
         logger.info(f"Real Email dispatched to {to_email}")
+        return True
     except Exception as e:
         print(f"⚠️ SMTP delivery error for {to_email}: {e}")
         logger.error(f"SMTP delivery error for {to_email}: {e}")
+        return False
 
-    return True
+async def send_email_notification(
+    to_email: str,
+    subject: str,
+    body_html: str,
+    qr_code_b64: str = None
+) -> bool:
+    """
+    Non-blocking async wrapper around synchronous SMTP email dispatch.
+    """
+    return await asyncio.to_thread(_sync_send_email, to_email, subject, body_html, qr_code_b64)
