@@ -1,11 +1,12 @@
 # Render Infrastructure-as-Code Blueprint
-# Automatically provisions PostgreSQL, Redis, FastAPI Backend, and React Frontend
+# Automatically provisions PostgreSQL, Redis, FastAPI Backend, and React Frontend (100% FREE TIER)
 
 services:
-  # 1. FastAPI Backend Web Service
+  # 1. FastAPI Backend Web Service (Free Tier)
   - type: web
     name: ticket-backend
     env: python
+    plan: free
     region: singapore
     buildCommand: cd backend && pip install -r requirements.txt
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -32,7 +33,7 @@ services:
       - key: SMTP_FROM
         sync: false
 
-  # 2. React Frontend Static Site (Global CDN)
+  # 2. React Frontend Static Site (Free Global CDN)
   - type: web
     name: ticket-frontend
     env: static
@@ -49,16 +50,17 @@ services:
           name: ticket-backend
           property: host
 
-  # 3. Redis Cache Service
+  # 3. Redis Cache Service (Free Tier)
   - type: redis
     name: ticket-redis
     region: singapore
     plan: free
     ipAllowList: []
 
-# Managed PostgreSQL Database
+# Managed PostgreSQL Database (Free Tier)
 databases:
   - name: ticket-postgres
     databaseName: ticket_booking_db
     user: ticket_user
+    plan: free
     region: singapore
