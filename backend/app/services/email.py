@@ -25,9 +25,6 @@ def _sync_send_email(
     print("=======================================================\n")
 
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    
-    # Fallback to projects.aky@gmail.com if cloud env vars are not set
     smtp_user = os.getenv("SMTP_USER", "").strip() or "projects.aky@gmail.com"
     smtp_pass = (os.getenv("SMTP_PASS", "").strip() or "ynsyxxbpiacuofuo").replace(" ", "")
     smtp_from = os.getenv("SMTP_FROM", smtp_user).strip() or smtp_user
@@ -63,19 +60,25 @@ def _sync_send_email(
             except Exception as qr_err:
                 logger.warning(f"CID QR image attachment notice: {qr_err}")
 
-        if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_from, [to_email], msg.as_string())
-        else:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+        # Attempt 1: Port 587 (TLS)
+        try:
+            with smtplib.SMTP(smtp_host, 587, timeout=12) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.sendmail(smtp_from, [to_email], msg.as_string())
+            print(f"✅ Real Email successfully delivered to ({to_email}) via Port 587 TLS!")
+            logger.info(f"Real Email dispatched to {to_email} via Port 587 TLS")
+            return True
+        except Exception as err587:
+            print(f"Notice: Port 587 TLS notice ({err587}). Attempting Port 465 SSL fallback...")
+            # Attempt 2: Port 465 (SSL Fallback)
+            with smtplib.SMTP_SSL(smtp_host, 465, timeout=12) as server:
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [to_email], msg.as_string())
+            print(f"✅ Real Email successfully delivered to ({to_email}) via Port 465 SSL!")
+            logger.info(f"Real Email dispatched to {to_email} via Port 465 SSL")
+            return True
 
-        print(f"✅ Real Email successfully delivered to user inbox ({to_email}) via Gmail SMTP!")
-        logger.info(f"Real Email dispatched to {to_email}")
-        return True
     except Exception as e:
         print(f"⚠️ SMTP delivery error for {to_email}: {e}")
         logger.error(f"SMTP delivery error for {to_email}: {e}")
@@ -88,6 +91,6 @@ async def send_email_notification(
     qr_code_b64: str = None
 ) -> bool:
     """
-    Non-blocking async wrapper around synchronous SMTP email dispatch.
+    Non-blocking async wrapper around dual-port SMTP email dispatch.
     """
     return await asyncio.to_thread(_sync_send_email, to_email, subject, body_html, qr_code_b64)
