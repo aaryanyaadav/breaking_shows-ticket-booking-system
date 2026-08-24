@@ -50,15 +50,16 @@ services:
           name: ticket-backend
           property: url
 
-# Managed Databases
+  # 3. Redis Cache Service
+  - type: redis
+    name: ticket-redis
+    region: singapore
+    plan: free
+    ipAllowList: []
+
+# Managed PostgreSQL Database
 databases:
   - name: ticket-postgres
     databaseName: ticket_booking_db
     user: ticket_user
     region: singapore
-
-# Managed Redis Cache
-redis:
-  - name: ticket-redis
-    region: singapore
-    plan: free
