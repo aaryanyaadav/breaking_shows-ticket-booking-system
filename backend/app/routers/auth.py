@@ -10,6 +10,9 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(req: UserRegisterRequest, db: AsyncSession = Depends(get_db)):
+    if req.role == UserRole.ADMIN:
+        raise HTTPException(status_code=400, detail="Admin registration is restricted. Only one system admin is permitted.")
+
     stmt = select(User).where(User.email == req.email)
     res = await db.execute(stmt)
     if res.scalar_one_or_none():

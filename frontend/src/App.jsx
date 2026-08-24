@@ -208,12 +208,12 @@ export default function App() {
             {/* Role Selection Tabs for Sign In & Registration */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Account Type:</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isLogin ? '1fr 1fr 1fr' : '1fr 1fr', gap: '6px' }}>
                 {[
                   { id: 'CUSTOMER', label: 'Customer', email: 'aryan@gmail.com', pass: 'cust123' },
                   { id: 'ORGANISER', label: 'Organiser', email: 'org@bookmyshow.com', pass: 'org123' },
                   { id: 'ADMIN', label: 'Admin', email: 'admin@ticketmaster.com', pass: 'admin123' }
-                ].map(r => (
+                ].filter(r => isLogin || r.id !== 'ADMIN').map(r => (
                   <button
                     key={r.id}
                     type="button"
@@ -288,7 +288,13 @@ export default function App() {
             <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               {isLogin ? "Don't have an account? " : "Already have an account? "}
               <button 
-                onClick={() => setIsLogin(!isLogin)} 
+                onClick={() => {
+                  const nextIsLogin = !isLogin;
+                  setIsLogin(nextIsLogin);
+                  if (!nextIsLogin && authForm.role === 'ADMIN') {
+                    setAuthForm(f => ({ ...f, role: 'CUSTOMER' }));
+                  }
+                }} 
                 style={{ background: 'transparent', border: 'none', color: 'var(--accent-pink)', cursor: 'pointer', fontWeight: 700 }}
               >
                 {isLogin ? 'Register' : 'Login'}
